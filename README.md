@@ -17,7 +17,8 @@
 
 **demo**
 ```js
-Contract: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+Contract sepolia: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+Contract mainnet: 0xA0b86a33E6441956f6ed9f27c6eB6e5d22c02893
 From Block: 6700000  
 To Block: 6701000
 Events: Transfer
@@ -48,3 +49,21 @@ Events: Transfer
   }
 ]
 ```
+
+
+### API Endpoints
+
+- **POST** `/api/indexer` - Start indexing with contract details
+- **GET** `/api/indexer` - Health check
+
+### Request Format
+
+```json
+{
+  "contractAddress": "0x...",
+  "contractABI": "[{...}]",
+  "eventsToTrack": ["Transfer", "Approval"],
+  "network": "sepolia",
+  "fromBlock": "earliest",
+  "toBlock": "latest"
+}

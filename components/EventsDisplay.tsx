@@ -54,6 +54,16 @@ export default function EventsDisplay({ events, isLoading, error, metadata }: Ev
     return baseUrl + txHash;
   };
 
+  // Sort events from newest to oldest (reverse chronological order)
+  const sortedEvents = [...events].sort((a, b) => {
+    // First, sort by block number (descending - newer blocks first)
+    const blockDiff = Number(b.blockNumber) - Number(a.blockNumber);
+    if (blockDiff !== 0) return blockDiff;
+    
+    // If same block, sort by log index (descending - later logs first)
+    return Number(b.logIndex) - Number(a.logIndex);
+  });
+
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -119,9 +129,16 @@ export default function EventsDisplay({ events, isLoading, error, metadata }: Ev
 
       {/* View Mode Toggle */}
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-black">
-          Events {events.length > 0 && `(${events.length})`}
-        </h3>
+        <div>
+          <h3 className="text-lg font-semibold text-black">
+            Events {events.length > 0 && `(${events.length})`}
+          </h3>
+          {events.length > 0 && (
+            <p className="text-sm text-gray-500 mt-1">
+              Sorted by newest first (Block #{sortedEvents[0]?.blockNumber} → #{sortedEvents[sortedEvents.length - 1]?.blockNumber})
+            </p>
+          )}
+        </div>
         <div className="flex border border-gray-300 rounded-lg overflow-hidden">
           <button
             onClick={() => setViewMode('table')}
@@ -170,9 +187,9 @@ export default function EventsDisplay({ events, isLoading, error, metadata }: Ev
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {events.map((event, index) => (
+                  {sortedEvents.map((event, index) => (
                     <>
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={`${event.transactionHash}-${event.logIndex}`} className="hover:bg-gray-50">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center">
                             <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
@@ -291,7 +308,7 @@ export default function EventsDisplay({ events, isLoading, error, metadata }: Ev
             // JSON View
             <div className="p-4">
               <pre className="bg-gray-900 text-green-400 p-4 rounded text-xs overflow-x-auto">
-                {JSON.stringify(events, null, 2)}
+                {JSON.stringify(sortedEvents, null, 2)}
               </pre>
             </div>
           )}
