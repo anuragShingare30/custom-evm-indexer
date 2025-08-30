@@ -1,7 +1,7 @@
 # MVP Indexer Architecture
 
 
-1. **User Input Layer:**
+1. **`User Input Layer`:**
 
 **What happens:**
 - User provides → Contract Address + Contract ABI + Events to track
@@ -11,11 +11,11 @@
 - API Layer: Node.js/Express (backend API to handle user input and trigger indexer logic)
 
 
-2. **Event Listener (Blockchain → Indexer)**:
+2. **`Event Listener (Blockchain → Indexer)`**:
 
 **What happens:**
 - Backend listens to the specified smart contract events using Ethers.js or Web3.js.
-- Whenever an event is emitted, it is captured in real-time
+- Whenever an event is emitted, it is captured in real-time + past events
 
 **Tech Choices:**
 - Node.js backend service
@@ -23,7 +23,7 @@
 - Alchemy / Infura RPC endpoint (to connect to Ethereum network)
 
 
-3. **Data Storage (Database Layer)**:
+3. **`Data Storage (Database Layer)`**:
 
 **What happens:**
 - Captured events are normalized (structured in tables) and stored.
@@ -35,7 +35,7 @@
 - Later can scale to managed PostgreSQL (like Supabase or AWS RDS)
 
 
-4. **Indexing Layer**:
+4. **`Indexing Layer`**:
 
 **What happens:**
 - Event listener continuously fetches logs → inserts into PostgreSQL.
@@ -46,7 +46,7 @@
 - Store last processed block in DB to resume safely after restart.
 
 
-5. **Query Layer (GraphQL API):**
+5. **`Query Layer (GraphQL API):`**
 
 **What happens:**
 - A GraphQL API sits on top of PostgreSQL.
@@ -57,7 +57,7 @@
 - OR Apollo GraphQL Server (custom resolvers pointing to PostgreSQL)
 
 
-6. **Frontend Dashboard**
+6. **`Frontend Dashboard`**
 
 **What happens:**
 - User can run queries via GraphQL → fetches indexed event data → shows on dashboard.
