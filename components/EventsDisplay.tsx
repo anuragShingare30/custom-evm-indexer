@@ -28,6 +28,11 @@ interface EventsDisplayProps {
       to: string;
     };
     totalEvents: number;
+    database?: {
+      status: string;
+      storedEvents: number;
+      contractId?: string;
+    };
   };
 }
 
@@ -37,10 +42,6 @@ export default function EventsDisplay({ events, isLoading, error, metadata }: Ev
 
   const toggleEventExpansion = (index: number) => {
     setExpandedEvent(expandedEvent === index ? null : index);
-  };
-
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   const formatHash = (hash: string) => {
@@ -94,35 +95,52 @@ export default function EventsDisplay({ events, isLoading, error, metadata }: Ev
     <div className="space-y-4">
       {/* Metadata Section */}
       {metadata && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h3 className="font-semibold text-black mb-3">Indexing Results</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className=" p-4 rounded-lg mb-6 text-black">
+          <h3 className="text-lg font-semibold mb-2">Indexing Results</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Contract:</span>
-              <span className="ml-2 font-mono text-black">{formatAddress(metadata.contractAddress)}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">Network:</span>
-              <span className="ml-2 text-black capitalize">{metadata.network}</span>
+              <span className="font-medium">Contract:</span>
+              <div className="break-all">{metadata.contractAddress}</div>
             </div>
             <div>
-              <span className="text-gray-600">Block Range:</span>
-              <span className="ml-2 text-black">{metadata.blockRange.from} - {metadata.blockRange.to}</span>
+              <span className="font-medium">Network:</span>
+              <div>{metadata.network}</div>
             </div>
             <div>
-              <span className="text-gray-600">Total Events:</span>
-              <span className="ml-2 font-semibold text-black">{metadata.totalEvents}</span>
+              <span className="font-medium">Block Range:</span>
+              <div>{metadata.blockRange.from} - {metadata.blockRange.to}</div>
             </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-gray-600">Events Tracked:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {metadata.eventsTracked.map((event, index) => (
-                <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                  {event}
-                </span>
-              ))}
+            <div>
+              <span className="font-medium">Total Events:</span>
+              <div>{metadata.totalEvents}</div>
             </div>
+            {metadata.database && (
+              <>
+                <div>
+                  <span className="font-medium">Database Status:</span>
+                  <div className={`${
+                    metadata.database.status === 'success' ? 'text-green-600' :
+                    metadata.database.status === 'error' ? 'text-red-600' :
+                    'text-yellow-600'
+                  }`}>
+                    {metadata.database.status === 'success' ? '✅ Stored' :
+                     metadata.database.status === 'error' ? '❌ Failed' :
+                     metadata.database.status === 'no-events' ? '⚪ No events' :
+                     '⏸️ Not attempted'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium">Stored Events:</span>
+                  <div>{metadata.database.storedEvents}</div>
+                </div>
+                {metadata.database.contractId && (
+                  <div className="col-span-2">
+                    <span className="font-medium">Contract ID:</span>
+                    <div className="text-xs break-all">{metadata.database.contractId}</div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

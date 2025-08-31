@@ -1,0 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// Store contracts being indexed
+model Contract {
+  id             String   @id @default(cuid())
+  address        String   @unique
+  name           String?
+  abi            Json     // Store ABI if needed for decoding
+  network        String   // e.g., "mainnet", "sepolia"
+  isActive       Boolean  @default(true) // For pausing/resuming indexing
+  lastIndexedBlock BigInt? // Track progress for resuming
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  events         Event[]
+  
+  @@index([address])
+  @@index([network])
+  @@index([isActive])
+}
+
+// Store decoded on-chain events
+model Event {
+  id             String   @id @default(cuid())
+  
+  // Blockchain data
+  blockNumber    BigInt   // Use BigInt for large block numbers
+  blockHash      String
+  blockTimestamp DateTime? // Add block timestamp for time-based queries
+  transactionHash String
+  transactionIndex Int     // Position in block
+  logIndex       Int      // Position of the event in the transaction
+  
+  // Contract relationship
+  contract       Contract @relation(fields: [contractId], references: [id])
+  contractId     String
+  contractAddress String  // Denormalized for faster queries
+  
+  // Event data
+  eventName      String
+  eventSignature String   // Event signature hash for faster filtering
+  indexedParams  Json     // Indexed arguments (for filtering)
+  data           Json     // Full decoded args (flexible JSON for all values)
+  rawLog         Json     // Store raw log data for debugging
+  
+  // Network info
+  network        String   // e.g., "mainnet", "sepolia"
+  
+  // Metadata
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Optimized indexes for common query patterns
+  @@index([blockNumber]) // Time-based queries
+  @@index([contractAddress]) // Contract-specific queries
+  @@index([eventName]) // Event-type queries
+  @@index([transactionHash]) // Transaction-specific queries
+  @@index([network]) // Network-specific queries
+  @@index([blockNumber, contractAddress]) // Combined queries
+  @@index([eventName, contractAddress]) // Event + contract queries
+  @@index([blockTimestamp]) // Time-based sorting
+  @@unique([transactionHash, logIndex]) // Prevent duplicates
+}
+
+// Chain metadata for multi-chain support
+model Chain {
+  id          String   @id @default(cuid())
+  chainId     Int      @unique
+  name        String
+  rpcUrl      String
+  blockTime   Int?     // Average block time in seconds
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([chainId])
+  @@index([isActive])
+}
+
+// Track indexing progress and status
+model IndexingStatus {
+  id                String   @id @default(cuid())
+  contractAddress   String   
+  network          String
+  lastIndexedBlock BigInt
+  lastIndexedAt    DateTime @default(now())
+  isActive         Boolean  @default(true)
+  errorCount       Int      @default(0)
+  lastError        String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@unique([contractAddress, network])
+  @@index([network])
+  @@index([isActive])
+}
+
+// Store user queries for analytics and caching
+model UserQuery {
+  id          String   @id @default(cuid())
+  queryHash   String   @unique // Hash of the query for deduplication
+  query       Json     // GraphQL query or parameters
+  resultCount Int?     // Number of results returned
+  executionTime Int?   // Query execution time in ms
+  createdAt   DateTime @default(now())
+  
+  @@index([createdAt])
+  @@index([executionTime])
+}

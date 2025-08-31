@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPublicClient, http, parseAbi, Log } from 'viem';
 import { mainnet, sepolia } from 'viem/chains';
+import { DatabaseService } from '@/app/lib/database';
 
 // Type definitions
 interface IndexerRequest {
@@ -25,6 +26,11 @@ interface IndexerResponse {
       to: string;
     };
     totalEvents: number;
+    database?: {
+      status: string;
+      storedEvents: number;
+      contractId?: string;
+    };
   };
 }
 
@@ -250,6 +256,48 @@ export async function POST(request: NextRequest) {
       return Number(a.logIndex) - Number(b.logIndex);
     });
 
+    // Store events in database
+    let databaseStatus = 'not-attempted';
+    let storedEvents = 0;
+    let contractId: string | undefined;
+    
+    try {
+      console.log('Storing events in database...');
+      
+      // First, create or update the contract record
+      const contract = await DatabaseService.createOrUpdateContract(
+        contractAddress,
+        parsedABI,
+        network,
+        `Contract ${contractAddress.slice(0, 8)}...`
+      );
+      
+      contractId = contract.id;
+      
+      // Store events in database
+      if (allLogs.length > 0) {
+        await DatabaseService.storeEvents(allLogs, contract.id, network);
+        storedEvents = allLogs.length;
+        console.log(`Stored ${allLogs.length} events in database`);
+        
+        // Update indexing status
+        const lastBlock = allLogs[allLogs.length - 1].blockNumber;
+        await DatabaseService.updateIndexingStatus(
+          contractAddress, 
+          network, 
+          BigInt(String(lastBlock))
+        );
+        
+        databaseStatus = 'success';
+      } else {
+        databaseStatus = 'no-events';
+      }
+    } catch (dbError) {
+      console.error('Database storage error:', dbError);
+      databaseStatus = 'error';
+      // Continue without failing the API call
+    }
+
     const response: IndexerResponse = {
       success: true,
       events: allLogs,
@@ -261,7 +309,12 @@ export async function POST(request: NextRequest) {
           from: fromBlockNum.toString(),
           to: toBlockNum.toString()
         },
-        totalEvents: allLogs.length
+        totalEvents: allLogs.length,
+        database: {
+          status: databaseStatus,
+          storedEvents,
+          contractId
+        }
       }
     };
 
