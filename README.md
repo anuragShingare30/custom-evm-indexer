@@ -49,6 +49,32 @@ npx prisma studio
     - Store events with blockHash for consistency.  
 
 
+# **GraphQL Layer**:
+
+1. **Apollo Server -> Indexer + Database + API**:
+- Fetches/stores blockchain events in DB.
+- Exposes them via GraphQL schema.
+- Example query a user can run:
+```
+1. define graphql schema
+2. define data set (db, rest-api, another server)
+3. define resolver
+```
+
+start
+2. **Apollo Client -> Query Builder UI**:
+- Users don’t directly write GraphQL manually (unless you give them that option).
+- Instead, they use a visual query builder UI (dropdowns, filters, date pickers, event types, etc.).
+- Your query builder generates GraphQL queries under the hood → `Apollo Client sends them to Apollo Server` → shows results nicely in UI (tables, charts, etc.)
+```
+1. init ApolloClient
+2. Connect your client to react
+3. fetch data with 'useQuery'
+```
+
+
+
+
 
 
 **demo**
@@ -68,7 +94,7 @@ Events: Transfer
     "inputs": [
       {"indexed": true, "name": "from", "type": "address"},
       {"indexed": true, "name": "to", "type": "address"},
-      {"indexed": false, "name": "value", "type": "uint256"}
+      {"indexed": false, "name": "value", "type": "uint256"} 
     ],
     "name": "Transfer",
     "type": "event"

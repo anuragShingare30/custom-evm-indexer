@@ -11,6 +11,7 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Database utility functions
 export class DatabaseService {
+
   static async createOrUpdateContract(
     address: string, 
     abi: Record<string, unknown>[], 
@@ -39,7 +40,7 @@ export class DatabaseService {
     contractId: string,
     network: string
   ): Promise<{ count: number }> {
-    console.log(`Processing ${events.length} events for storage...`);
+    console.log(`Processing ${events.length} events for storage...`); // comment
     
     // Helper function to serialize BigInt values
     const serializeBigInt = (obj: Record<string, unknown>): string => {
@@ -72,6 +73,7 @@ export class DatabaseService {
           network,
         };
 
+        // comment
         console.log(`Event ${index + 1} processed:`, {
           eventName: record.eventName,
           blockNumber: record.blockNumber.toString(),
@@ -86,6 +88,7 @@ export class DatabaseService {
       }
     });
 
+    // comment
     console.log(`Attempting to store ${eventRecords.length} processed events...`);
 
     // Use createMany with skipDuplicates to handle potential duplicates
@@ -94,46 +97,9 @@ export class DatabaseService {
       skipDuplicates: true,
     });
 
+    // comment
     console.log(`Successfully stored ${result.count} events in database`);
     return result;
-  }
-
-  static async getEventsByContract(
-    contractAddress: string,
-    options: {
-      eventName?: string;
-      fromBlock?: bigint;
-      toBlock?: bigint;
-      limit?: number;
-      offset?: number;
-      orderBy?: 'asc' | 'desc';
-    } = {}
-  ) {
-    const {
-      eventName,
-      fromBlock,
-      toBlock,
-      limit = 100,
-      offset = 0,
-      orderBy = 'desc'
-    } = options;
-
-    return await prisma.event.findMany({
-      where: {
-        contractAddress,
-        ...(eventName && { eventName }),
-        ...(fromBlock && { blockNumber: { gte: fromBlock } }),
-        ...(toBlock && { blockNumber: { lte: toBlock } }),
-      },
-      orderBy: {
-        blockNumber: orderBy,
-      },
-      take: limit,
-      skip: offset,
-      include: {
-        contract: true,
-      },
-    });
   }
 
   static async getEventStats(contractAddress: string) {
@@ -247,5 +213,197 @@ export class DatabaseService {
         contract: true,
       },
     });
+  }
+
+  // New methods for GraphQL resolvers
+  static async getContracts(network?: string) {
+    return await prisma.contract.findMany({
+      where: {
+        ...(network && { network }),
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  static async getContract(address: string, network: string) {
+    return await prisma.contract.findFirst({
+      where: {
+        address,
+        network,
+      },
+    });
+  }
+
+  static async getContractById(id: string) {
+    return await prisma.contract.findUnique({
+      where: { id },
+    });
+  }
+
+  static async getEventsWithPagination(options: {
+    filters: {
+      contractAddress?: string;
+      eventName?: string;
+      network?: string;
+      fromBlock?: string;
+      toBlock?: string;
+      fromDate?: string;
+      toDate?: string;
+    };
+    limit: number;
+    offset: number;
+  }) {
+    const { filters, limit, offset } = options;
+    
+    const where: {
+      contractAddress?: string;
+      eventName?: string;
+      network?: string;
+      blockNumber?: { gte?: bigint; lte?: bigint };
+      createdAt?: { gte?: Date; lte?: Date };
+    } = {};
+    
+    if (filters.contractAddress) {
+      where.contractAddress = filters.contractAddress;
+    }
+    
+    if (filters.eventName) {
+      where.eventName = filters.eventName;
+    }
+    
+    if (filters.network) {
+      where.network = filters.network;
+    }
+    
+    if (filters.fromBlock) {
+      where.blockNumber = { gte: BigInt(filters.fromBlock) };
+    }
+    
+    if (filters.toBlock) {
+      if (where.blockNumber) {
+        where.blockNumber.lte = BigInt(filters.toBlock);
+      } else {
+        where.blockNumber = { lte: BigInt(filters.toBlock) };
+      }
+    }
+    
+    if (filters.fromDate) {
+      where.createdAt = { gte: new Date(filters.fromDate) };
+    }
+    
+    if (filters.toDate) {
+      if (where.createdAt) {
+        where.createdAt.lte = new Date(filters.toDate);
+      } else {
+        where.createdAt = { lte: new Date(filters.toDate) };
+      }
+    }
+
+    const [events, totalCount] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        orderBy: {
+          blockNumber: 'desc',
+        },
+        take: limit,
+        skip: offset,
+        include: {
+          contract: true,
+        },
+      }),
+      prisma.event.count({ where }),
+    ]);
+
+    return { events, totalCount };
+  }
+
+  static async getIndexingStatuses(contractAddress?: string, network?: string) {
+    return await prisma.indexingStatus.findMany({
+      where: {
+        ...(contractAddress && { contractAddress }),
+        ...(network && { network }),
+      },
+      orderBy: {
+        lastIndexedAt: 'desc',
+      },
+    });
+  }
+
+  static async getEventTypes(contractAddress: string, network: string) {
+    const eventTypes = await prisma.event.groupBy({
+      by: ['eventName'],
+      where: {
+        contractAddress,
+        network,
+      },
+    });
+    
+    return eventTypes.map(et => et.eventName);
+  }
+
+  // Updated getEventsByContract method to support new GraphQL requirements
+  static async getEventsByContract(
+    contractAddress: string,
+    options: {
+      eventName?: string;
+      network?: string;
+      fromBlock?: bigint;
+      toBlock?: bigint;
+      limit?: number;
+      offset?: number;
+      orderBy?: 'asc' | 'desc';
+    } = {}
+  ) {
+    const {
+      eventName,
+      network,
+      fromBlock,
+      toBlock,
+      limit = 100,
+      offset = 0,
+      orderBy = 'desc'
+    } = options;
+
+    const where: {
+      contractAddress: string;
+      eventName?: string;
+      network?: string;
+      blockNumber?: { gte?: bigint; lte?: bigint };
+    } = {
+      contractAddress,
+      ...(eventName && { eventName }),
+      ...(network && { network }),
+    };
+
+    if (fromBlock) {
+      where.blockNumber = { gte: fromBlock };
+    }
+    
+    if (toBlock) {
+      if (where.blockNumber) {
+        where.blockNumber.lte = toBlock;
+      } else {
+        where.blockNumber = { lte: toBlock };
+      }
+    }
+
+    const [events, totalCount] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        orderBy: {
+          blockNumber: orderBy,
+        },
+        take: limit,
+        skip: offset,
+        include: {
+          contract: true,
+        },
+      }),
+      prisma.event.count({ where }),
+    ]);
+
+    return { events, totalCount };
   }
 }

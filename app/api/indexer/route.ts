@@ -170,6 +170,7 @@ export async function POST(request: NextRequest) {
     const MAX_BLOCKS_PER_REQUEST = BigInt(500);
     const totalBlockRange = toBlockNum - fromBlockNum;
     
+    // comment
     console.log(`Total block range: ${totalBlockRange} blocks (from ${fromBlockNum} to ${toBlockNum})`);
     
     // Warn about large block ranges
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest) {
       while (currentFromBlock <= toBlockNum) {
         const currentToBlock = currentFromBlock + MAX_BLOCKS_PER_REQUEST - BigInt(1);
         const batchToBlock = currentToBlock > toBlockNum ? toBlockNum : currentToBlock;
-        
+        // comment
         console.log(`Fetching logs for ${eventSig.name} from block ${currentFromBlock} to ${batchToBlock}`);
         
         try {
