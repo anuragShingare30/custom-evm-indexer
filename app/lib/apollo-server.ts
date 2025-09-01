@@ -80,6 +80,25 @@ export const typeDefs = gql`
     totalPages: Int!
   }
 
+  type SmartRangeInfo {
+    fromBlock: String!
+    toBlock: String!
+    latestEventBlock: String
+    totalEventsInRange: Int!
+    isOptimalRange: Boolean!
+    message: String!
+  }
+
+  type SmartEventsResponse {
+    events: [Event!]!
+    rangeInfo: SmartRangeInfo!
+    totalCount: Int!
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+    currentPage: Int!
+    totalPages: Int!
+  }
+
   type Query {
     # Get all contracts
     getContracts(network: String): [Contract!]!
@@ -103,6 +122,14 @@ export const typeDefs = gql`
     
     # Get available event types for a contract
     getEventTypes(contractAddress: String!, network: String!): [String!]!
+    
+    # Smart range detection - automatically finds optimal block range
+    getEventsSmartRange(
+      contractAddress: String!
+      network: String!
+      eventName: String
+      pagination: PaginationInput
+    ): SmartEventsResponse!
   }
 `;
 
@@ -271,6 +298,49 @@ export const resolvers = {
       } catch (error) {
         console.error('Error fetching event types:', error);
         throw new Error('Failed to fetch event types');
+      }
+    },
+
+    // Smart range detection - automatically finds optimal block range
+    getEventsSmartRange: async (_: unknown, args: {
+      contractAddress: string;
+      network: string;
+      eventName?: string;
+      pagination?: { page?: number; limit?: number };
+    }) => {
+      try {
+        const page = args.pagination?.page || 1;
+        const limit = args.pagination?.limit || 50;
+        const offset = (page - 1) * limit;
+
+        const result = await DatabaseService.getEventsSmartRange({
+          contractAddress: args.contractAddress,
+          network: args.network,
+          eventName: args.eventName,
+          limit,
+          offset,
+        });
+
+        const totalPages = Math.ceil(result.totalCount / limit);
+
+        return {
+          events: result.events.map(event => ({
+            ...event,
+            id: event.id,
+            blockNumber: event.blockNumber.toString(),
+            rawLog: JSON.stringify(event.rawLog),
+            createdAt: event.createdAt.toISOString(),
+          })),
+          rangeInfo: result.rangeInfo,
+          totalCount: result.totalCount,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+          currentPage: page,
+          totalPages,
+        };
+      } catch (error) {
+        console.error('Error fetching events with smart range:', error);
+        throw new Error('Failed to fetch events with smart range');
       }
     },
   },

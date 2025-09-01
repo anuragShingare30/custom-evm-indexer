@@ -302,7 +302,7 @@ export function ResultsDisplay({ filters, refreshTrigger }: ResultsDisplayProps)
                       </tr>
                       {expandedEvent === event.id && (
                         <tr key={`${event.id}-details`}>
-                          <td colSpan={6} className="px-6 py-4 bg-gray-50">
+                          <td colSpan={6} className="px-6 py-4 bg-gray-50 text-black">
                             <div className="text-sm">
                               <div className="grid grid-cols-2 gap-4">
                                 <div>

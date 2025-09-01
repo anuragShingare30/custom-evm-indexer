@@ -406,4 +406,115 @@ export class DatabaseService {
 
     return { events, totalCount };
   }
+
+  // Smart range detection - finds latest event block and creates optimal range
+  static async getEventsSmartRange(options: {
+    contractAddress: string;
+    network: string;
+    eventName?: string;
+    limit: number;
+    offset: number;
+  }) {
+    const { contractAddress, network, eventName, limit, offset } = options;
+    
+    // First, find the latest block number where events occurred for this contract
+    const baseWhere: {
+      contractAddress: string;
+      network: string;
+      eventName?: string;
+    } = {
+      contractAddress,
+      network,
+    };
+    
+    if (eventName) {
+      baseWhere.eventName = eventName;
+    }
+    
+    // Get the latest event to determine the optimal block range
+    const latestEvent = await prisma.event.findFirst({
+      where: baseWhere,
+      orderBy: {
+        blockNumber: 'desc',
+      },
+      select: {
+        blockNumber: true,
+      },
+    });
+    
+    let fromBlock: bigint;
+    let toBlock: bigint;
+    let latestEventBlock: string | null = null;
+    let isOptimalRange = false;
+    let message = '';
+    
+    if (latestEvent) {
+      // Found events for this contract
+      latestEventBlock = latestEvent.blockNumber.toString();
+      toBlock = latestEvent.blockNumber;
+      fromBlock = toBlock - BigInt(999); // 1000 block range (inclusive)
+      isOptimalRange = true;
+      message = `Found events up to block ${toBlock.toString()}. Showing range: ${fromBlock.toString()} - ${toBlock.toString()} (1000 blocks)`;
+    } else {
+      // No events found for this contract, use recent blocks from blockchain
+      const { BlockchainService } = await import('./blockchain');
+      try {
+        const latestNetworkBlock = await BlockchainService.getLatestBlockNumber(network);
+        toBlock = latestNetworkBlock;
+        fromBlock = toBlock - BigInt(999);
+        isOptimalRange = false;
+        message = `No events found for this contract. Searching recent blocks: ${fromBlock.toString()} - ${toBlock.toString()} (1000 blocks)`;
+      } catch (error) {
+        // Fallback to a reasonable default range
+        toBlock = BigInt(23000000); // Reasonable default
+        fromBlock = toBlock - BigInt(999);
+        isOptimalRange = false;
+        message = `Unable to fetch latest block. Using default range: ${fromBlock.toString()} - ${toBlock.toString()} (1000 blocks)`;
+        console.warn('Failed to fetch latest block:', error);
+      }
+    }
+    
+    // Ensure fromBlock is not negative
+    if (fromBlock < BigInt(0)) {
+      fromBlock = BigInt(0);
+    }
+    
+    // Now query events in the calculated range
+    const where = {
+      ...baseWhere,
+      blockNumber: {
+        gte: fromBlock,
+        lte: toBlock,
+      },
+    };
+    
+    const [events, totalCount] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        skip: offset,
+        take: limit,
+        orderBy: [
+          { blockNumber: 'desc' },
+          { logIndex: 'desc' },
+        ],
+        include: {
+          contract: true,
+        },
+      }),
+      prisma.event.count({ where }),
+    ]);
+    
+    return {
+      events,
+      totalCount,
+      rangeInfo: {
+        fromBlock: fromBlock.toString(),
+        toBlock: toBlock.toString(),
+        latestEventBlock,
+        totalEventsInRange: totalCount,
+        isOptimalRange,
+        message,
+      },
+    };
+  }
 }

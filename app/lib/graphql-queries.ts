@@ -186,3 +186,52 @@ export const CONTRACT_FIELDS = gql`
     updatedAt
   }
 `;
+
+// Query to get events with smart range detection
+export const GET_EVENTS_SMART_RANGE = gql`
+  query GetEventsSmartRange(
+    $contractAddress: String!
+    $network: String!
+    $eventName: String
+    $pagination: PaginationInput
+  ) {
+    getEventsSmartRange(
+      contractAddress: $contractAddress
+      network: $network
+      eventName: $eventName
+      pagination: $pagination
+    ) {
+      events {
+        id
+        blockNumber
+        blockHash
+        blockTimestamp
+        transactionHash
+        transactionIndex
+        logIndex
+        contractId
+        contractAddress
+        eventName
+        eventSignature
+        indexedParams
+        data
+        rawLog
+        network
+        createdAt
+      }
+      rangeInfo {
+        fromBlock
+        toBlock
+        latestEventBlock
+        totalEventsInRange
+        isOptimalRange
+        message
+      }
+      totalCount
+      hasNextPage
+      hasPreviousPage
+      currentPage
+      totalPages
+    }
+  }
+`;

@@ -51,19 +51,110 @@ export default function Dashboard() {
   const [indexerResults, setIndexerResults] = useState<IndexerResponse | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-    setValue,
-  } = useForm<IndexerFormData>({
+  // Smart range state
+  const [smartRangeInfo, setSmartRangeInfo] = useState<{
+    isLoading: boolean;
+    error: string | null;
+    rangeData: {
+      fromBlock: string;
+      toBlock: string;
+      latestEventBlock?: string;
+      totalEventsInRange: number;
+      isOptimalRange: boolean;
+      message: string;
+    } | null;
+  }>({
+    isLoading: false,
+    error: null,
+    rangeData: null,
+  });
+  
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<IndexerFormData>({
     defaultValues: {
       network: 'sepolia',
-      fromBlock: '6000000', // More recent blocks for faster testing
-      toBlock: 'latest'
+      fromBlock: '',
+      toBlock: '',
     }
   });
+
+  const watchedContractAddress = watch("contractAddress");
+  const watchedNetwork = watch("network");
+
+  // Smart range detection function
+  const detectSmartRange = async () => {
+    if (!watchedContractAddress) {
+      setSmartRangeInfo(prev => ({
+        ...prev,
+        error: 'Please enter a contract address first',
+      }));
+      return;
+    }
+
+    setSmartRangeInfo(prev => ({ 
+      ...prev, 
+      isLoading: true, 
+      error: null,
+      rangeData: null 
+    }));
+
+    try {
+      const response = await fetch('/api/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: `
+            query GetEventsSmartRange($contractAddress: String!, $network: String!) {
+              getEventsSmartRange(contractAddress: $contractAddress, network: $network, pagination: { page: 1, limit: 1 }) {
+                rangeInfo {
+                  fromBlock
+                  toBlock
+                  latestEventBlock
+                  totalEventsInRange
+                  isOptimalRange
+                  message
+                }
+              }
+            }
+          `,
+          variables: {
+            contractAddress: watchedContractAddress,
+            network: watchedNetwork,
+          },
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.data?.getEventsSmartRange) {
+        const { rangeInfo } = result.data.getEventsSmartRange;
+        
+        // Update form fields with the smart range
+        setValue('fromBlock', rangeInfo.fromBlock);
+        setValue('toBlock', rangeInfo.toBlock);
+
+        setSmartRangeInfo({
+          isLoading: false,
+          error: null,
+          rangeData: rangeInfo,
+        });
+      } else {
+        setSmartRangeInfo(prev => ({
+          ...prev,
+          isLoading: false,
+          error: result.errors?.[0]?.message || 'Failed to detect smart range',
+        }));
+      }
+    } catch (error) {
+      console.error('Error detecting smart range:', error);
+      setSmartRangeInfo(prev => ({
+        ...prev,
+        isLoading: false,
+        error: 'Failed to detect smart range',
+      }));
+    }
+  };
 
   const addEvent = (eventName: string) => {
     if (eventName.trim() && !events.includes(eventName.trim())) {
@@ -155,13 +246,19 @@ export default function Dashboard() {
               >
                 GraphQL Query Builder
               </Link>
+              <Link
+                href="/playground"
+                className="px-4 py-2 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 font-medium"
+              >
+                GraphiQL Playground
+              </Link>
               <a
                 href="/api/graphql"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 font-medium"
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 font-medium"
               >
-                GraphQL Playground
+                API Endpoint
               </a>
             </div>
           </div>
@@ -304,7 +401,46 @@ export default function Dashboard() {
               </div>
 
               {/* Block Range */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-black">Block Range Configuration</h3>
+                  <button
+                    type="button"
+                    onClick={detectSmartRange}
+                    disabled={smartRangeInfo.isLoading || !watchedContractAddress || isListening}
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                  >
+                    {smartRangeInfo.isLoading ? 'Detecting...' : '🎯 Smart Range Detection'}
+                  </button>
+                </div>
+
+                {/* Smart range info display */}
+                {smartRangeInfo.rangeData && (
+                  <div className={`p-4 rounded-lg border ${
+                    smartRangeInfo.rangeData.isOptimalRange 
+                      ? 'bg-green-50 border-green-200 text-green-800' 
+                      : 'bg-blue-50 border-blue-200 text-blue-800'
+                  }`}>
+                    <h4 className="font-semibold mb-2">
+                      {smartRangeInfo.rangeData.isOptimalRange ? '🎯 Optimal Range Detected' : '📍 Default Range Applied'}
+                    </h4>
+                    <p className="text-sm mb-2">{smartRangeInfo.rangeData.message}</p>
+                    <div className="text-sm">
+                      <span className="font-medium">Total events in range:</span> {smartRangeInfo.rangeData.totalEventsInRange}
+                      {smartRangeInfo.rangeData.latestEventBlock && (
+                        <span> | <span className="font-medium">Latest event block:</span> {smartRangeInfo.rangeData.latestEventBlock}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {smartRangeInfo.error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700 text-sm">{smartRangeInfo.error}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="fromBlock" className="block text-sm font-medium text-black mb-2">
                     From Block
@@ -343,10 +479,11 @@ export default function Dashboard() {
               
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <p className="text-yellow-800 text-sm">
-                  <strong>Tip:</strong> For faster results, use a smaller block range (e.g., last 10,000 blocks). 
-                  Large ranges from &ldquo;earliest&rdquo; may take several minutes to process.
+                  <strong>Tip:</strong> Use &ldquo;🎯 Smart Range Detection&rdquo; to automatically find the optimal block range for your contract, 
+                  or manually enter block numbers. Smart detection finds the latest events and sets a 1000-block range for optimal performance.
                 </p>
               </div>
+            </div>
 
               {/* Submit Button */}
               <div className="flex gap-4">

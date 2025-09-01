@@ -52,12 +52,19 @@ export default function QueryInterface() {
               </div>
               
               <a
+                href="/playground"
+                className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded-md hover:bg-blue-50"
+              >
+                GraphiQL Playground
+              </a>
+              
+              <a
                 href="/api/graphql"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded-md hover:bg-blue-50"
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
               >
-                GraphQL Playground
+                GraphQL Playground Endpoint
               </a>
             </div>
           </div>
