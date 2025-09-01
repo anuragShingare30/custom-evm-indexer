@@ -12,7 +12,7 @@ const server = new ApolloServer({
   // Add CORS configuration
   cors: {
     origin: process.env.NODE_ENV === 'production' 
-      ? process.env.FRONTEND_URL 
+      ? [process.env.FRONTEND_URL, process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''].filter(Boolean)
       : ['http://localhost:3000', 'http://localhost:3001'],
     credentials: true,
   },
