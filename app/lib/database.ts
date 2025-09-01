@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient, Prisma } from '../generated/prisma';
 
 // Global Prisma instance for development
 const globalForPrisma = globalThis as unknown as {
@@ -21,14 +21,14 @@ export class DatabaseService {
     return await prisma.contract.upsert({
       where: { address },
       update: {
-        abi,
+        abi: abi as Prisma.InputJsonValue, // Proper Prisma Json input type
         network,
         name,
         updatedAt: new Date(),
       },
       create: {
         address,
-        abi,
+        abi: abi as Prisma.InputJsonValue, // Proper Prisma Json input type
         network,
         name,
       },

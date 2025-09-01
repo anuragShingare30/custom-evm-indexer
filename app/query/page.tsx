@@ -82,7 +82,7 @@ export default function QueryInterface() {
         
         {/* Results */}
         <ResultsDisplay 
-          filters={filters}
+          filters={filters as Record<string, string | undefined>}
           refreshTrigger={refreshTrigger}
         />
       </main>

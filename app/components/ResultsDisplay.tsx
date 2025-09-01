@@ -36,7 +36,7 @@ interface EventsResponse {
 }
 
 interface ResultsDisplayProps {
-  filters: Record<string, string>;
+  filters: Record<string, string | undefined>;
   refreshTrigger?: number;
 }
 
@@ -49,7 +49,10 @@ export function ResultsDisplay({ filters, refreshTrigger }: ResultsDisplayProps)
   // Query events with current filters and pagination
   const { data, loading, error, refetch } = useQuery<{ getEvents: EventsResponse }>(GET_EVENTS, {
     variables: {
-      filters: Object.keys(filters).length > 0 ? filters : undefined,
+      filters: Object.keys(filters).length > 0 ? 
+        Object.fromEntries(
+          Object.entries(filters).filter(([, value]) => value !== undefined)
+        ) : undefined,
       pagination: {
         page: currentPage,
         limit: pageSize,
