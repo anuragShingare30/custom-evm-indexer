@@ -252,14 +252,6 @@ export default function Dashboard() {
               >
                 GraphiQL Playground
               </Link>
-              <a
-                href="/api/graphql"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 font-medium"
-              >
-                API Endpoint
-              </a>
             </div>
           </div>
         </div>
