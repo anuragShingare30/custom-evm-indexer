@@ -7,7 +7,7 @@ import { typeDefs, resolvers } from '@/app/lib/apollo-server';
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  // Enable introspection and playground for development and production
+  // Force enable introspection in all environments for GraphiQL compatibility
   introspection: true,
   // Disable CSRF protection for GraphiQL compatibility
   csrfPrevention: false,
@@ -16,12 +16,10 @@ const server = new ApolloServer({
     console.error('GraphQL Error:', error);
     return {
       message: error.message,
-      // Only include error details in development
-      ...(process.env.NODE_ENV === 'development' && {
-        locations: error.locations,
-        path: error.path,
-        extensions: error.extensions,
-      }),
+      // Include error details for debugging
+      locations: error.locations,
+      path: error.path,
+      extensions: error.extensions,
     };
   },
 });
