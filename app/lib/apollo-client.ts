@@ -11,15 +11,6 @@ interface Event {
   // Add other event fields as needed
 }
 
-interface EventsResponse {
-  events: Event[];
-  totalCount: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-  currentPage: number;
-  totalPages: number;
-}
-
 // Create HTTP link to our GraphQL endpoint
 const httpLink = createHttpLink({
   uri: process.env.NODE_ENV === 'production' 
