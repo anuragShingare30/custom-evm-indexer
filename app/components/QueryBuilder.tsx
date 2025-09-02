@@ -22,10 +22,6 @@ interface QueryFilters {
   contractAddress: string;
   eventName: string;
   network: string;
-  fromBlock: string;
-  toBlock: string;
-  fromDate: string;
-  toDate: string;
 }
 
 interface QueryBuilderProps {
@@ -39,10 +35,6 @@ export function QueryBuilder({ onFiltersChange, onExecuteQuery, loading = false 
     contractAddress: '',
     eventName: '',
     network: 'sepolia',
-    fromBlock: '',
-    toBlock: '',
-    fromDate: '',
-    toDate: '',
   });
 
   // Get contracts for dropdown
@@ -50,13 +42,13 @@ export function QueryBuilder({ onFiltersChange, onExecuteQuery, loading = false 
     variables: { network: filters.network },
   });
 
-  // Get event types when contract is selected
+  // Get event types based on selected contract or all events if no contract
   const { data: eventTypesData, loading: eventTypesLoading } = useQuery<GetEventTypesResponse>(GET_EVENT_TYPES, {
     variables: {
-      contractAddress: filters.contractAddress,
+      contractAddress: filters.contractAddress || undefined,
       network: filters.network,
     },
-    skip: !filters.contractAddress,
+    // Always fetch event types, don't skip
   });
 
   // Update parent component when filters change
@@ -85,10 +77,6 @@ export function QueryBuilder({ onFiltersChange, onExecuteQuery, loading = false 
       contractAddress: '',
       eventName: '',
       network: 'sepolia',
-      fromBlock: '',
-      toBlock: '',
-      fromDate: '',
-      toDate: '',
     });
   };
 
@@ -104,7 +92,7 @@ export function QueryBuilder({ onFiltersChange, onExecuteQuery, loading = false 
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Network Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -131,7 +119,7 @@ export function QueryBuilder({ onFiltersChange, onExecuteQuery, loading = false 
             disabled={contractsLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 text-gray-900"
           >
-            <option value="">Select a contract...</option>
+            <option value="">All Contracts</option>
             {contractsData?.getContracts?.map((contract: Contract) => (
               <option key={contract.id} value={contract.address}>
                 {contract.name || `${contract.address.slice(0, 10)}...`}
@@ -151,7 +139,7 @@ export function QueryBuilder({ onFiltersChange, onExecuteQuery, loading = false 
           <select
             value={filters.eventName}
             onChange={(e) => handleFilterChange('eventName', e.target.value)}
-            disabled={!filters.contractAddress || eventTypesLoading}
+            disabled={eventTypesLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 text-gray-900"
           >
             <option value="">All Events</option>
@@ -165,62 +153,7 @@ export function QueryBuilder({ onFiltersChange, onExecuteQuery, loading = false 
             <p className="text-xs text-gray-500 mt-1">Loading events...</p>
           )}
         </div>
-
-        {/* Block Range */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            From Block
-          </label>
-          <input
-            type="number"
-            value={filters.fromBlock}
-            onChange={(e) => handleFilterChange('fromBlock', e.target.value)}
-            placeholder="e.g., 6700000"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            To Block
-          </label>
-          <input
-            type="number"
-            value={filters.toBlock}
-            onChange={(e) => handleFilterChange('toBlock', e.target.value)}
-            placeholder="e.g., 6800000"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-          />
-        </div>
-
-        {/* Date Range */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            From Date
-          </label>
-          <input
-            type="date"
-            value={filters.fromDate}
-            onChange={(e) => handleFilterChange('fromDate', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            To Date
-          </label>
-          <input
-            type="date"
-            value={filters.toDate}
-            onChange={(e) => handleFilterChange('toDate', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-          />
-        </div>
       </div>
-
-      {/* Block Range Info */}
-              {/* Date Range */}
 
       {/* Execute Query Button */}
       <div className="flex justify-center">

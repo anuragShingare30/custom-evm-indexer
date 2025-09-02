@@ -266,7 +266,7 @@ export class DatabaseService {
     } = {};
     
     if (filters.contractAddress) {
-      where.contractAddress = filters.contractAddress;
+      where.contractAddress = filters.contractAddress.toLowerCase(); // Ensure lowercase for matching
     }
     
     if (filters.eventName) {
@@ -331,12 +331,12 @@ export class DatabaseService {
     });
   }
 
-  static async getEventTypes(contractAddress: string, network: string) {
+  static async getEventTypes(contractAddress?: string, network?: string) {
     const eventTypes = await prisma.event.groupBy({
       by: ['eventName'],
       where: {
-        contractAddress,
-        network,
+        ...(contractAddress && { contractAddress: contractAddress.toLowerCase() }),
+        ...(network && { network }),
       },
     });
     
@@ -367,12 +367,12 @@ export class DatabaseService {
     } = options;
 
     const where: {
-      contractAddress: string;
+      contractAddress?: string;
       eventName?: string;
       network?: string;
       blockNumber?: { gte?: bigint; lte?: bigint };
     } = {
-      contractAddress,
+      ...(contractAddress && { contractAddress: contractAddress.toLowerCase() }), // Ensure lowercase
       ...(eventName && { eventName }),
       ...(network && { network }),
     };

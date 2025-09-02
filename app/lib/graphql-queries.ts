@@ -125,9 +125,9 @@ export const GET_INDEXING_STATUS = gql`
   }
 `;
 
-// Query to get available event types for a contract
+// Query to get available event types for a contract (or all events if no contract specified)
 export const GET_EVENT_TYPES = gql`
-  query GetEventTypes($contractAddress: String!, $network: String!) {
+  query GetEventTypes($contractAddress: String, $network: String) {
     getEventTypes(contractAddress: $contractAddress, network: $network)
   }
 `;

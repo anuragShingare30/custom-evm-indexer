@@ -3,15 +3,12 @@
 import { useState, useCallback } from 'react';
 import { QueryBuilder } from '../components/QueryBuilder';
 import { ResultsDisplay } from '../components/ResultsDisplay';
+import Link from "next/link";
 
 interface QueryFilters {
   contractAddress?: string;
   eventName?: string;
   network?: string;
-  fromBlock?: string;
-  toBlock?: string;
-  fromDate?: string;
-  toDate?: string;
 }
 
 export default function QueryInterface() {
@@ -41,7 +38,11 @@ export default function QueryInterface() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
+              <Link
+                href="/"
+              >
               <h1 className="text-3xl font-bold text-gray-900">Web3 Indexer</h1>
+              </Link>
               <p className="text-gray-600 mt-1">Interactive blockchain event query builder</p>
             </div>
             

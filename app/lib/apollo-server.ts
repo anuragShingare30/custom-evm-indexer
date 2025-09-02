@@ -1,5 +1,7 @@
 import { gql } from 'graphql-tag';
 import { DatabaseService } from './database';
+import { prisma } from './database';
+import type { Event } from '../generated/prisma';
 
 // GraphQL Type Definitions
 export const typeDefs = gql`
@@ -120,8 +122,8 @@ export const typeDefs = gql`
     # Get indexing status for contracts
     getIndexingStatus(contractAddress: String, network: String): [IndexingStatus!]!
     
-    # Get available event types for a contract
-    getEventTypes(contractAddress: String!, network: String!): [String!]!
+    # Get available event types for a contract (or all if no contract specified)
+    getEventTypes(contractAddress: String, network: String): [String!]!
     
     # Smart range detection - automatically finds optimal block range
     getEventsSmartRange(
@@ -229,7 +231,7 @@ export const resolvers = {
         const offset = (page - 1) * limit;
 
         const result = await DatabaseService.getEventsByContract(
-          args.contractAddress,
+          args.contractAddress.toLowerCase(), // Ensure lowercase for matching
           {
             eventName: args.eventName,
             network: args.network,
@@ -284,10 +286,10 @@ export const resolvers = {
       }
     },
 
-    // Get available event types for a contract
+    // Get available event types for a contract (or all events if no contract specified)
     getEventTypes: async (_: unknown, args: { 
-      contractAddress: string; 
-      network: string; 
+      contractAddress?: string; 
+      network?: string; 
     }) => {
       try {
         const eventTypes = await DatabaseService.getEventTypes(
@@ -347,10 +349,20 @@ export const resolvers = {
 
   // Nested resolvers for relationships
   Contract: {
-    events: async (parent: { id: string }) => {
+    events: async (parent: { id: string; address: string }) => {
       try {
-        const result = await DatabaseService.getEventsByContract(parent.id, {});
-        return result.events.map(event => ({
+        // Option 1: Use the direct relationship through contractId (more efficient)
+        const events = await prisma.event.findMany({
+          where: {
+            contractId: parent.id
+          },
+          orderBy: {
+            blockNumber: 'desc'
+          },
+          take: 100, // Limit to prevent large responses
+        });
+
+        return events.map((event: Event) => ({
           ...event,
           id: event.id,
           blockNumber: event.blockNumber.toString(),

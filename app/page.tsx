@@ -403,7 +403,10 @@ export default function Dashboard() {
               {/* Block Range */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
+                  <div>
                   <h3 className="text-lg font-medium text-black">Block Range Configuration</h3>
+                  <p className="text-red-600 text-sm">Try to add block number manually, as Smart range cannot be exact all time!!!</p>
+                  </div>
                   <button
                     type="button"
                     onClick={detectSmartRange}
