@@ -7,77 +7,106 @@ import { typeDefs, resolvers } from '@/app/lib/apollo-server';
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  // Enable GraphQL Playground in development
-  introspection: process.env.NODE_ENV !== 'production',
+  // Enable introspection and playground for development and production
+  introspection: true,
+  // Disable CSRF protection for GraphiQL compatibility
+  csrfPrevention: false,
+  // Add formatting for better error handling
+  formatError: (error) => {
+    console.error('GraphQL Error:', error);
+    return {
+      message: error.message,
+      // Only include error details in development
+      ...(process.env.NODE_ENV === 'development' && {
+        locations: error.locations,
+        path: error.path,
+        extensions: error.extensions,
+      }),
+    };
+  },
 });
 
 // Create the Next.js handler
 const handler = startServerAndCreateNextHandler(server, {
   context: async (req: NextRequest) => {
-    // Add any context you need here (user auth, etc.)
     return {
       req,
-      // Add authentication context if needed
-      // user: await getUserFromToken(req.headers.authorization)
     };
   },
 });
 
-// Export handlers for both GET and POST with CORS
-export async function GET(request: NextRequest) {
-  const response = await handler(request);
-  
-  // Add CORS headers
-  const corsOrigins = process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''].filter(Boolean)
-    : ['http://localhost:3000', 'http://localhost:3001'];
-  
+// Helper function to get CORS origins
+function getCORSOrigins() {
+  if (process.env.NODE_ENV === 'production') {
+    const origins = [];
+    if (process.env.FRONTEND_URL) origins.push(process.env.FRONTEND_URL);
+    if (process.env.VERCEL_URL) origins.push(`https://${process.env.VERCEL_URL}`);
+    // Add the actual deployment URL
+    origins.push('https://custom-evm-indexer-hemg2ehow-anurag-pramod-shingares-projects.vercel.app');
+    return origins;
+  }
+  return ['http://localhost:3000', 'http://localhost:3001'];
+}
+
+// Helper function to add CORS headers
+function addCORSHeaders(response: Response, request: NextRequest) {
+  const corsOrigins = getCORSOrigins();
   const origin = request.headers.get('origin');
-  if (origin && corsOrigins.includes(origin)) {
+  
+  // Allow all origins in production for now, or specific origin if it matches
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+  } else if (origin && corsOrigins.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
   }
   
-  response.headers.set('Access-Control-Allow-Credentials', 'true');
+  response.headers.set('Access-Control-Allow-Credentials', 'false');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Apollo-Require-Preflight');
   
   return response;
+}
+
+// Export handlers for both GET and POST with CORS
+export async function GET(request: NextRequest) {
+  try {
+    const response = await handler(request);
+    return addCORSHeaders(response, request);
+  } catch (error) {
+    console.error('GET handler error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }), 
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
-  const response = await handler(request);
-  
-  // Add CORS headers
-  const corsOrigins = process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''].filter(Boolean)
-    : ['http://localhost:3000', 'http://localhost:3001'];
-  
-  const origin = request.headers.get('origin');
-  if (origin && corsOrigins.includes(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
+  try {
+    const response = await handler(request);
+    return addCORSHeaders(response, request);
+  } catch (error) {
+    console.error('POST handler error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }), 
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
-  
-  response.headers.set('Access-Control-Allow-Credentials', 'true');
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
-  return response;
 }
 
 export async function OPTIONS(request: NextRequest) {
-  const corsOrigins = process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''].filter(Boolean)
-    : ['http://localhost:3000', 'http://localhost:3001'];
-  
-  const origin = request.headers.get('origin');
-  
   return new Response(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': origin && corsOrigins.includes(origin) ? origin : '',
-      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Apollo-Require-Preflight',
     },
   });
 }
