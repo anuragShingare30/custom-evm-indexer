@@ -199,3 +199,8 @@ query Test($address: String!, $network: String!){
   "fromBlock": "earliest",
   "toBlock": "latest"
 }
+```
+
+# `New version`
+
+- Next version of the project will focus on building **sdk**, do that other Dapps can directly integrate our indexer and query directly to their Dapp.
